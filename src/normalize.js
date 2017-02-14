@@ -15,12 +15,12 @@ const SPECIAL_CHARS_MAP = {
 const SPECIAL_CHARS = Object.keys(SPECIAL_CHARS_MAP).join('');
 const ANONYMOUS_FIRST_ARGUMENT_REGEXP = /^\%$/;
 const SPECIAL_CHARS_REGEXP = new RegExp(
-  `[${escapeRegExp(SPECIAL_CHARS)}]`, 'g');
+  `[${escapeRegExp(SPECIAL_CHARS)}]`,
+  'g'
+);
 
 export default function normalize(str) {
   return str
-    .replace(ANONYMOUS_FIRST_ARGUMENT_REGEXP,
-      () => '_PERCENT_1')
-    .replace(SPECIAL_CHARS_REGEXP,
-      char => SPECIAL_CHARS_MAP[char]);
+    .replace(ANONYMOUS_FIRST_ARGUMENT_REGEXP, () => '_PERCENT_1')
+    .replace(SPECIAL_CHARS_REGEXP, char => SPECIAL_CHARS_MAP[char]);
 }

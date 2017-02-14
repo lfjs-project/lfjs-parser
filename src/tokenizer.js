@@ -1,8 +1,8 @@
-const SYMBOL_REGEXP  = /[^()\[\]\{\}\#"'`,:;\|\s]/;
-const SPACE_REGEXP   = /[\t\n\f ]/;
+const SYMBOL_REGEXP = /[^()\[\]\{\}\#"'`,:;\|\s]/;
+const SPACE_REGEXP = /[\t\n\f ]/;
 
 function preprocessInput(input) {
-  return input.replace(/\r\n?/g, "\n");
+  return input.replace(/\r\n?/g, '\n');
 }
 
 export default class Tokenizer {
@@ -21,8 +21,12 @@ export default class Tokenizer {
 
     while (true) {
       token = this.lex();
-      if (token === 'EOF') { break; }
-      if (token) { tokens.push(token); }
+      if (token === 'EOF') {
+        break;
+      }
+      if (token) {
+        tokens.push(token);
+      }
     }
 
     return tokens;
@@ -35,19 +39,21 @@ export default class Tokenizer {
   }
 
   addLocInfo(token, line, column) {
-    if (!token) { return; }
+    if (!token) {
+      return;
+    }
 
     token.firstLine = this.firstLine;
     token.firstColumn = this.firstColumn;
-    token.lastLine = (line === 0) ? 0 : (line || this.line);
-    token.lastColumn = (column === 0) ? 0 : (column || this.column);
+    token.lastLine = line === 0 ? 0 : line || this.line;
+    token.lastColumn = column === 0 ? 0 : column || this.column;
   }
 
   lex() {
-    let char = this.input.charAt(this.char++);
+    let char = this.input.charAt((this.char++));
 
     if (char) {
-      if (char === "\n") {
+      if (char === '\n') {
         this.line++;
         this.column = 0;
       } else {
@@ -67,54 +73,62 @@ export default class Tokenizer {
     this.sharp = false;
 
     switch (char) {
-    case '#':
-      if (sharp) { invalidCharacterError(char, this.state); }
-      this.sharp = true;
-      break;
-    case '(':
-      if (sharp) {
-        return { type: '#(' };
-      } else {
-        return { type: '(' };
-      }
-    case '{':
-      if (sharp) {
-        return { type: '#{' };
-      } else {
-        return { type: '{' };
-      }
-    case '[':
-    case ')':
-    case '}':
-    case ']':
-      if (sharp) { invalidCharacterError(char, this.state); }
-      return { type: char };
-    case '"':
-      this.state = 'string';
+      case '#':
+        if (sharp) {
+          invalidCharacterError(char, this.state);
+        }
+        this.sharp = true;
+        break;
+      case '(':
+        if (sharp) {
+          return { type: '#(' };
+        } else {
+          return { type: '(' };
+        }
+      case '{':
+        if (sharp) {
+          return { type: '#{' };
+        } else {
+          return { type: '{' };
+        }
+      case '[':
+      case ')':
+      case '}':
+      case ']':
+        if (sharp) {
+          invalidCharacterError(char, this.state);
+        }
+        return { type: char };
+      case '"':
+        this.state = 'string';
 
-      if (sharp) {
-        return this.token = { type: '#"', chars: '' };
-      } else {
-        return this.token = { type: '"', chars: '' };
-      }
-    case ':':
-    case '@':
-    case "'":
-      this.state = 'symbol';
-
-      if (sharp) { invalidCharacterError(char, this.state); }
-
-      return this.token = { type: char, chars: '' };
-    default:
-      if (sharp) { invalidCharacterError(char, this.state); }
-
-      if (SYMBOL_REGEXP.test(char)) {
+        if (sharp) {
+          return this.token = { type: '#"', chars: '' };
+        } else {
+          return this.token = { type: '"', chars: '' };
+        }
+      case ':':
+      case '@':
+      case "'":
         this.state = 'symbol';
 
-        return this.token = { type: 'symbol-or-number', chars: char };
-      } else if (!SPACE_REGEXP.test(char)) {
-        invalidCharacterError(char, this.state);
-      }
+        if (sharp) {
+          invalidCharacterError(char, this.state);
+        }
+
+        return this.token = { type: char, chars: '' };
+      default:
+        if (sharp) {
+          invalidCharacterError(char, this.state);
+        }
+
+        if (SYMBOL_REGEXP.test(char)) {
+          this.state = 'symbol';
+
+          return this.token = { type: 'symbol-or-number', chars: char };
+        } else if (!SPACE_REGEXP.test(char)) {
+          invalidCharacterError(char, this.state);
+        }
     }
   }
 
@@ -128,19 +142,19 @@ export default class Tokenizer {
 
   symbol(char) {
     switch (char) {
-    case ')':
-    case '}':
-    case ']':
-      this.state = 'sexp';
-      return { type: char };
-    default:
-      if (SPACE_REGEXP.test(char)) {
+      case ')':
+      case '}':
+      case ']':
         this.state = 'sexp';
-      } else if (SYMBOL_REGEXP.test(char)) {
-        this.addChar(char);
-      } else {
-        invalidCharacterError(char, this.state);
-      }
+        return { type: char };
+      default:
+        if (SPACE_REGEXP.test(char)) {
+          this.state = 'sexp';
+        } else if (SYMBOL_REGEXP.test(char)) {
+          this.addChar(char);
+        } else {
+          invalidCharacterError(char, this.state);
+        }
     }
   }
 }

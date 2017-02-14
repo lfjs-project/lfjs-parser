@@ -1,13 +1,10 @@
-import {
-  uniqBy,
-  range
-} from 'lodash';
+import { uniqBy, range } from 'lodash';
 
 import Tokenizer, { invalidCharacterError } from './tokenizer';
 import normalize from './normalize';
 
-const SYMBOL_REGEXP  = /[^()\[\]\{\}\#"'`,:;\|\s]/;
-const FLOAT_REGEXP   = /^[-+]?[0-9]+\.[0-9]*$/;
+const SYMBOL_REGEXP = /[^()\[\]\{\}\#"'`,:;\|\s]/;
+const FLOAT_REGEXP = /^[-+]?[0-9]+\.[0-9]*$/;
 const INTEGER_REGEXP = /^[-+]?[0-9]+$/;
 const ANONYMOUS_ARGUMENT_REGEXP = /^\%[0-9]?$/;
 
@@ -19,90 +16,80 @@ export default function parse(str) {
 
   for (let { chars, type } of tokens) {
     switch (type) {
-    // List
-    case '(':
-      current = list();
-      push(tree, current);
-      tree.unshift(current);
-      break;
-    // Vector
-    case '[':
-      current = ESNode('vector', []);
-      push(tree, current);
-      tree.unshift(current);
-      break;
-    // Map
-    case '{':
-      current = ESNode('map', []);
-      push(tree, current);
-      tree.unshift(current);
-      break;
-    // Set
-    case '#{':
-      current = ESNode('set', []);
-      push(tree, current);
-      tree.unshift(current);
-      break;
-    case ')':
-    case ']':
-    case '}':
-      postProcessNode(tree.shift(), anonymousParams);
-      break;
-    // fn
-    case '#(':
-      current = list();
-      push(tree, current);
-      current.anonymous = true;
-      anonymousParams.unshift(new Set());
-      tree.unshift(current);
-      break;
-    // deref
-    case '@':
-      push(tree,
-        list(
-          identifier('deref'),
-          identifier(chars)
-        )
-      );
-      break;
-    // quote
-    case "'":
-      push(tree,
-        list(
-          symbol('quote'),
-          symbol(chars)
-        )
-      );
-      break;
-    // Keyword
-    case ':':
-      push(tree, keyword(chars));
-      break;
-    // String
-    case '"':
-      push(tree, string(chars));
-      break;
-    // RegExp
-    case '#"':
-      push(tree, regexp(chars));
-      break;
-    // Symbol / Number
-    case 'symbol-or-number':
-      if (FLOAT_REGEXP.test(chars)) {
-        push(tree, float(chars));
-      } else if (INTEGER_REGEXP.test(chars)) {
-        push(tree, integer(chars));
-      } else if (ANONYMOUS_ARGUMENT_REGEXP.test(chars)) {
-        if (anonymousParams[0]) {
-          anonymousParams[0].add(chars);
-        } else {
-          invalidCharacterError(chars, 'not an anonymous function');
+      // List
+      case '(':
+        current = list();
+        push(tree, current);
+        tree.unshift(current);
+        break;
+      // Vector
+      case '[':
+        current = ESNode('vector', []);
+        push(tree, current);
+        tree.unshift(current);
+        break;
+      // Map
+      case '{':
+        current = ESNode('map', []);
+        push(tree, current);
+        tree.unshift(current);
+        break;
+      // Set
+      case '#{':
+        current = ESNode('set', []);
+        push(tree, current);
+        tree.unshift(current);
+        break;
+      case ')':
+      case ']':
+      case '}':
+        postProcessNode(tree.shift(), anonymousParams);
+        break;
+      // fn
+      case '#(':
+        current = list();
+        push(tree, current);
+        current.anonymous = true;
+        anonymousParams.unshift(new Set());
+        tree.unshift(current);
+        break;
+      // deref
+      case '@':
+        push(tree, list(identifier('deref'), identifier(chars)));
+        break;
+      // quote
+      case "'":
+        push(tree, list(symbol('quote'), symbol(chars)));
+        break;
+      // Keyword
+      case ':':
+        push(tree, keyword(chars));
+        break;
+      // String
+      case '"':
+        push(tree, string(chars));
+        break;
+      // RegExp
+      case '#"':
+        push(tree, regexp(chars));
+        break;
+      // Symbol / Number
+      case 'symbol-or-number':
+        if (FLOAT_REGEXP.test(chars)) {
+          push(tree, float(chars));
+        } else if (INTEGER_REGEXP.test(chars)) {
+          push(tree, integer(chars));
+        } else if (ANONYMOUS_ARGUMENT_REGEXP.test(chars)) {
+          if (anonymousParams[0]) {
+            anonymousParams[0].add(chars);
+          } else {
+            invalidCharacterError(chars, 'not an anonymous function');
+          }
+          push(tree, symbol(chars));
+        } else if (SYMBOL_REGEXP.test(chars)) {
+          push(tree, symbol(chars));
         }
-        push(tree, symbol(chars));
-      } else if (SYMBOL_REGEXP.test(chars)) {
-        push(tree, symbol(chars));
-      }
-      break;
+        break;
     }
   }
 
@@ -119,10 +106,10 @@ function push(tree, value) {
 
 function postProcessNode(node, anonymousParams) {
   switch (node.type) {
-  case 'set':
-    optimizeSet(node);
-  case 'list':
-    anonymousFnArguments(node, anonymousParams);
+    case 'set':
+      optimizeSet(node);
+    case 'list':
+      anonymousFnArguments(node, anonymousParams);
   }
 }
 
@@ -154,7 +141,9 @@ function anonymousFnArguments(node, anonymousParams) {
 function ESNode(type, value, raw = null) {
   let node = { type, value };
 
-  if (raw) { node.raw = raw; }
+  if (raw) {
+    node.raw = raw;
+  }
 
   return node;
 }
@@ -193,13 +182,13 @@ function identifier(value) {
 
 function symbol(value) {
   switch (value) {
-  case 'nil':
-    return literal(null);
-  case 'true':
-    return literal(true);
-  case 'false':
-    return literal(false);
-  default:
-    return identifier(value);
+    case 'nil':
+      return literal(null);
+    case 'true':
+      return literal(true);
+    case 'false':
+      return literal(false);
+    default:
+      return identifier(value);
   }
 }
