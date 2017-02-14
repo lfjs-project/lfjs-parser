@@ -8,6 +8,7 @@
   "main": "dist/index.js",
   "jsnext:main": "src/index.js",
   "scripts": {
+    "prettier": "prettier --single-quote --write src/*.js test/*.js",
     "clean": "rm -rf dist coverage",
     "lint": "eslint src test",
     "pretest": "yarn run lint",
@@ -38,7 +39,8 @@
     "babel-preset-env": "^1.1.8",
     "chai": "^3.5.0",
     "eslint": "^3.2.2",
-    "mocha": "^3.2.0"
+    "mocha": "^3.2.0",
+    "prettier": "^0.17.0"
   },
   "dependencies": {
     "lodash": "^4.15.0"
