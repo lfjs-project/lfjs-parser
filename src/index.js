@@ -1,59 +1,24 @@
-import Set from 'core-js/library/fn/set';
-
 import {
-  escapeRegExp,
   uniqBy,
   range
 } from 'lodash';
 
+import Tokenizer, { invalidCharacterError } from './tokenizer';
+import normalize from './normalize';
+
 const SYMBOL_REGEXP  = /[^()\[\]\{\}\#"'`,:;\|\s]/;
 const FLOAT_REGEXP   = /^[-+]?[0-9]+\.[0-9]*$/;
 const INTEGER_REGEXP = /^[-+]?[0-9]+$/;
-const SPACE_REGEXP   = /[\t\n\f ]/;
-
-const SPECIAL_CHARS_MAP = {
-  '!': '_BANG_',
-  '%': '_PERCENT_',
-  '*': '_STAR_',
-  '+': '_PLUS_',
-  '/': '_SLASH_',
-  '<': '_LT_',
-  '=': '_EQ_',
-  '>': '_GT_',
-  '?': '_QMARK_',
-  '-': '_'
-};
-const SPECIAL_CHARS = Object.keys(SPECIAL_CHARS_MAP).join('');
-const ANONYMOUS_FIRST_ARGUMENT_REGEXP = /^\%$/;
 const ANONYMOUS_ARGUMENT_REGEXP = /^\%[0-9]?$/;
-const SPECIAL_CHARS_REGEXP = new RegExp(
-  `[${escapeRegExp(SPECIAL_CHARS)}]`, 'g');
-
-function normalize(str) {
-  return str
-    .replace(ANONYMOUS_FIRST_ARGUMENT_REGEXP,
-      () => '_PERCENT_1')
-    .replace(SPECIAL_CHARS_REGEXP,
-      char => SPECIAL_CHARS_MAP[char]);
-}
-
-function preprocessInput(input) {
-  return input.replace(/\r\n?/g, "\n");
-}
 
 export default function parse(str) {
-  let tokenizer = new Tokenizer(str);
-  let tokens = tokenizer.parse();
-
+  let tokens = new Tokenizer(str).parse();
   let tree = [list()];
   let anonymousParams = [];
   let current;
 
-  for (let i = 0, len = tokens.length; i < len; i++) {
-    let token = tokens[i];
-    let chars = token.chars;
-
-    switch (token.type) {
+  for (let { chars, type } of tokens) {
+    switch (type) {
     // List
     case '(':
       current = list();
@@ -62,19 +27,19 @@ export default function parse(str) {
       break;
     // Vector
     case '[':
-      current = collection('vector');
+      current = ESNode('vector', []);
       push(tree, current);
       tree.unshift(current);
       break;
     // Map
     case '{':
-      current = collection('map');
+      current = ESNode('map', []);
       push(tree, current);
       tree.unshift(current);
       break;
     // Set
     case '#{':
-      current = collection('set');
+      current = ESNode('set', []);
       push(tree, current);
       tree.unshift(current);
       break;
@@ -131,7 +96,7 @@ export default function parse(str) {
         if (anonymousParams[0]) {
           anonymousParams[0].add(chars);
         } else {
-          error(chars, 'not an anonymous function');
+          invalidCharacterError(chars, 'not an anonymous function');
         }
         push(tree, symbol(chars));
       } else if (SYMBOL_REGEXP.test(chars)) {
@@ -180,79 +145,50 @@ function anonymousFnArguments(node, anonymousParams) {
 
     node.value = [
       identifier('fn'),
-      collection('vector', ...params),
+      ESNode('vector', params),
       list(...node.value)
     ];
   }
 }
 
-function collection(type, ...value) {
-  return {
-    type: type,
-    value: value
-  }
+function ESNode(type, value, raw = null) {
+  let node = { type, value };
+
+  if (raw) { node.raw = raw; }
+
+  return node;
 }
 
 function list(...value) {
-  return {
-    type: 'list',
-    value: value
-  }
+  return ESNode('list', value);
 }
 
 function string(chars) {
-  return {
-    type: 'string',
-    raw: `"${chars}"`,
-    value: chars
-  };
+  return ESNode('string', chars, `"${chars}"`);
 }
 
 function keyword(value) {
-  return {
-    type: 'keyword',
-    raw: `"${value}"`,
-    value: value
-  };
+  return ESNode('keyword', value, `"${value}"`);
 }
 
 function regexp(value) {
-  return {
-    type: 'regexp',
-    raw: `/${value}/`,
-    value: new RegExp(value)
-  };
+  return ESNode('regexp', new RegExp(value), `/${value}/`);
 }
 
 function float(value) {
-  return {
-    type: 'float',
-    raw: value,
-    value: parseFloat(value, 10)
-  };
+  return ESNode('float', parseFloat(value, 10), value);
 }
 
 function integer(value) {
-  return {
-    type: 'integer',
-    raw: value,
-    value: parseInt(value, 10)
-  };
+  return ESNode('integer', parseInt(value, 10), value);
 }
 
 function literal(value) {
-  return {
-    type: 'literal',
-    raw: `${value}`,
-    value: value
-  };
+  return ESNode('literal', value, `${value}`);
 }
 
 function identifier(value) {
-  return {
-    type: 'identifier',
-    value: normalize(value)
-  };
+  return ESNode('identifier', normalize(value));
 }
 
 function symbol(value) {
@@ -265,149 +201,5 @@ function symbol(value) {
     return literal(false);
   default:
     return identifier(value);
-  }
-}
-
-function error(char, state) {
-  throw new Error(`Invalid character "${char}" in ${state}.`);
-}
-
-class Tokenizer {
-  constructor(input) {
-    this.input = preprocessInput(input);
-    this.char = 0;
-    this.line = 1;
-    this.column = 0;
-
-    this.state = 'sexp';
-    this.token = null;
-  }
-
-  parse() {
-    let tokens = [], token;
-
-    while (true) {
-      token = this.lex();
-      if (token === 'EOF') { break; }
-      if (token) { tokens.push(token); }
-    }
-
-    return tokens;
-  }
-
-  addChar(char) {
-    if (this.token && typeof this.token.chars === 'string') {
-      this.token.chars += char;
-    }
-  }
-
-  addLocInfo(token, line, column) {
-    if (!token) { return; }
-
-    token.firstLine = this.firstLine;
-    token.firstColumn = this.firstColumn;
-    token.lastLine = (line === 0) ? 0 : (line || this.line);
-    token.lastColumn = (column === 0) ? 0 : (column || this.column);
-  }
-
-  lex() {
-    let char = this.input.charAt(this.char++);
-
-    if (char) {
-      if (char === "\n") {
-        this.line++;
-        this.column = 0;
-      } else {
-        this.column++;
-      }
-      let token = this[this.state].call(this, char);
-      //this.addLocInfo(token, this.line, this.column);
-      return token;
-    } else {
-      //this.addLocInfo(this.line, this.column);
-      return 'EOF';
-    }
-  }
-
-  sexp(char) {
-    let sharp = this.sharp;
-    this.sharp = false;
-
-    switch (char) {
-    case '#':
-      if (sharp) { error(char, this.state); }
-      this.sharp = true;
-      break;
-    case '(':
-      if (sharp) {
-        return { type: '#(' };
-      } else {
-        return { type: '(' };
-      }
-    case '{':
-      if (sharp) {
-        return { type: '#{' };
-      } else {
-        return { type: '{' };
-      }
-    case '[':
-    case ')':
-    case '}':
-    case ']':
-      if (sharp) { error(char, this.state); }
-      return { type: char };
-    case '"':
-      this.state = 'string';
-
-      if (sharp) {
-        return this.token = { type: '#"', chars: '' };
-      } else {
-        return this.token = { type: '"', chars: '' };
-      }
-    case ':':
-    case '@':
-    case "'":
-      this.state = 'symbol';
-
-      if (sharp) { error(char, this.state); }
-
-      return this.token = { type: char, chars: '' };
-    default:
-      if (sharp) { error(char, this.state); }
-
-      if (SYMBOL_REGEXP.test(char)) {
-        this.state = 'symbol';
-
-        return this.token = { type: 'symbol-or-number', chars: char };
-      } else if (!SPACE_REGEXP.test(char)) {
-        error(char, this.state);
-      }
-    }
-  }
-
-  string(char) {
-    if (char === '"') {
-      this.state = 'sexp';
-    } else {
-      this.addChar(char);
-    }
-  }
-
-  symbol(char) {
-    switch (char) {
-    case ')':
-    case '}':
-    case ']':
-      this.state = 'sexp';
-      return { type: char };
-    default:
-      if (SPACE_REGEXP.test(char)) {
-        this.state = 'sexp';
-      } else if (SYMBOL_REGEXP.test(char)) {
-        this.addChar(char);
-      } else {
-        error(char, this.state);
-      }
-    }
   }
 }
