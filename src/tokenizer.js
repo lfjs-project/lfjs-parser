@@ -19,11 +19,9 @@ export default class Tokenizer {
   parse() {
     let tokens = [], token;
 
-    while (true) {
-      token = this.lex();
-      if (token === 'EOF') {
-        break;
-      }
+    while (token !== 'EOF') {
+      token = this.lex(token);
+
       if (token) {
         tokens.push(token);
       }
@@ -49,8 +47,8 @@ export default class Tokenizer {
     token.lastColumn = column === 0 ? 0 : column || this.column;
   }
 
-  lex() {
-    let char = this.input.charAt((this.char++));
+  lex(lastToken) {
+    let char = this.input.charAt(this.char++);
 
     if (char) {
       if (char === '\n') {
@@ -59,7 +57,7 @@ export default class Tokenizer {
       } else {
         this.column++;
       }
-      let token = this[this.state].call(this, char);
+      let token = this[this.state].call(this, char, lastToken);
       //this.addLocInfo(token, this.line, this.column);
       return token;
     } else {
@@ -68,64 +66,62 @@ export default class Tokenizer {
     }
   }
 
-  sexp(char) {
-    let sharp = this.sharp;
-    this.sharp = false;
-
+  sexp(char, lastToken) {
     switch (char) {
       case '#':
-        if (sharp) {
+        if (lastToken && lastToken.type === 'dispatch') {
           invalidCharacterError(char, this.state);
         }
-        this.sharp = true;
-        break;
+        return { type: 'dispatch' };
+      case '^':
+        if (lastToken && lastToken.type === 'meta') {
+          invalidCharacterError(char, this.state);
+        }
+        return { type: 'meta' };
+      case "'":
+        return { type: 'quote' };
+      case '@':
+        return { type: 'deref' };
       case '(':
-        if (sharp) {
-          return { type: '#(' };
-        } else {
-          return { type: '(' };
-        }
+        return { type: 'open-paren' };
       case '{':
-        if (sharp) {
-          return { type: '#{' };
-        } else {
-          return { type: '{' };
-        }
+        return { type: 'open-brace' };
       case '[':
       case ')':
       case '}':
       case ']':
-        if (sharp) {
+        if (lastToken && lastToken.type === 'dispatch') {
           invalidCharacterError(char, this.state);
         }
-        return { type: char };
+
+        return { type: charToType(char) };
       case '"':
         this.state = 'string';
 
-        if (sharp) {
-          return this.token = { type: '#"', chars: '' };
-        } else {
-          return this.token = { type: '"', chars: '' };
-        }
+        return (this.token = { type: 'string', chars: '' });
+      case ';':
+        this.state = 'comment';
+
+        return (this.token = { type: 'comment', chars: '' });
       case ':':
-      case '@':
-      case "'":
         this.state = 'symbol';
 
-        if (sharp) {
+        if (lastToken && lastToken.type === 'dispatch') {
           invalidCharacterError(char, this.state);
         }
 
-        return this.token = { type: char, chars: '' };
+        return (this.token = { type: charToType(char), chars: '' });
+      case '&':
+        return { type: charToType(char) };
       default:
-        if (sharp) {
+        if (lastToken && lastToken.type === 'dispatch') {
           invalidCharacterError(char, this.state);
         }
 
         if (SYMBOL_REGEXP.test(char)) {
           this.state = 'symbol';
 
-          return this.token = { type: 'symbol-or-number', chars: char };
+          return (this.token = { type: 'symbol', chars: char });
         } else if (!SPACE_REGEXP.test(char)) {
           invalidCharacterError(char, this.state);
         }
@@ -140,13 +136,21 @@ export default class Tokenizer {
     }
   }
 
+  comment(char) {
+    if (char === '\n' || char === '\r') {
+      this.state = 'sexp';
+    } else {
+      this.addChar(char);
+    }
+  }
+
   symbol(char) {
     switch (char) {
       case ')':
       case '}':
       case ']':
         this.state = 'sexp';
-        return { type: char };
+        return { type: charToType(char) };
       default:
         if (SPACE_REGEXP.test(char)) {
           this.state = 'sexp';
@@ -156,6 +160,35 @@ export default class Tokenizer {
           invalidCharacterError(char, this.state);
         }
     }
+  }
+}
+
+function charToType(char) {
+  switch (char) {
+    case '#':
+      return 'dispatch';
+    case '^':
+      return 'meta';
+    case '@':
+      return 'deref';
+    case "'":
+      return 'quote';
+    case ':':
+      return 'keyword';
+    case '"':
+      return 'string';
+    case '&':
+      return 'rest';
+    case '(':
+      return 'open-paren';
+    case '[':
+      return 'open-bracket';
+    case '{':
+      return 'open-brace';
+    case ')':
+    case ']':
+    case '}':
+      return 'close-delimiter';
   }
 }
 

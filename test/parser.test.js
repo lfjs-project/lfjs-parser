@@ -7,6 +7,12 @@ describe('#parse', function() {
     assert.deepEqual(parse(''), []);
   });
 
+  it('should parse comments', function() {
+    assert.deepEqual(parse('; Hello World'), [
+      { type: 'comment', value: ' Hello World' }
+    ]);
+  });
+
   describe('literals', function() {
     it('string', function() {
       assert.deepEqual(parse('"yolo"'), [
@@ -215,6 +221,34 @@ world"`
       ]);
     });
 
+    it('with comment', function() {
+      assert.deepEqual(
+        parse(
+          `; comment 1
+(def todos (atom []))
+; comment 2`
+        ),
+        [
+          { type: 'comment', value: ' comment 1' },
+          {
+            type: 'list',
+            value: [
+              { type: 'identifier', value: 'def' },
+              { type: 'identifier', value: 'todos' },
+              {
+                type: 'list',
+                value: [
+                  { type: 'identifier', value: 'atom' },
+                  { type: 'vector', value: [] }
+                ]
+              }
+            ]
+          },
+          { type: 'comment', value: ' comment 2' }
+        ]
+      );
+    });
+
     it('with identifier', function() {
       assert.deepEqual(parse('(map "yolo")'), [
         {
@@ -262,30 +296,44 @@ world"`
   });
 
   describe('set', function() {
-    it('with literals', function() {
-      assert.deepEqual(parse('#{1 "yolo" true}'), [
-        {
-          type: 'set',
-          value: [
-            { type: 'integer', raw: '1', value: 1 },
-            { type: 'string', raw: '"yolo"', value: 'yolo' },
-            { type: 'literal', raw: 'true', value: true }
-          ]
-        }
-      ]);
-    });
-
-    it('with uniq literals', function() {
-      assert.deepEqual(parse('#{1 "yolo" true 1 2 1 false nil}'), [
+    it('with literals and collections', function() {
+      assert.deepEqual(parse('#{1 "yolo" true ["yolo"] #{4 4 5}}'), [
         {
           type: 'set',
           value: [
             { type: 'integer', raw: '1', value: 1 },
             { type: 'string', raw: '"yolo"', value: 'yolo' },
             { type: 'literal', raw: 'true', value: true },
-            { type: 'integer', raw: '2', value: 2 },
-            { type: 'literal', raw: 'false', value: false },
-            { type: 'literal', raw: 'null', value: null }
+            {
+              type: 'vector',
+              value: [
+                {
+                  raw: '"yolo"',
+                  type: 'string',
+                  value: 'yolo'
+                }
+              ]
+            },
+            {
+              type: 'set',
+              value: [
+                {
+                  raw: '4',
+                  type: 'integer',
+                  value: 4
+                },
+                {
+                  raw: '4',
+                  type: 'integer',
+                  value: 4
+                },
+                {
+                  raw: '5',
+                  type: 'integer',
+                  value: 5
+                }
+              ]
+            }
           ]
         }
       ]);
@@ -459,6 +507,25 @@ world"`
     ]);
   });
 
+  it('quoted list', function() {
+    assert.deepEqual(parse("'(+ 3 4)"), [
+      {
+        type: 'list',
+        value: [
+          { type: 'identifier', value: 'quote' },
+          {
+            type: 'list',
+            value: [
+              { type: 'identifier', value: '_PLUS_' },
+              { type: 'integer', raw: '3', value: 3 },
+              { type: 'integer', raw: '4', value: 4 }
+            ]
+          }
+        ]
+      }
+    ]);
+  });
+
   it('derefered identifier', function() {
     assert.deepEqual(parse('@hello'), [
       {
@@ -469,6 +536,102 @@ world"`
         ]
       }
     ]);
+  });
+
+  describe('meta', function() {
+    it('identifier with meta', function() {
+      assert.deepEqual(parse('^:dynamic obj'), [
+        {
+          type: 'list',
+          value: [
+            { type: 'identifier', value: 'with_meta' },
+            { type: 'identifier', value: 'obj' },
+            {
+              type: 'map',
+              value: [
+                { type: 'keyword', raw: '"dynamic"', value: 'dynamic' },
+                { type: 'literal', raw: 'true', value: true }
+              ]
+            }
+          ]
+        }
+      ]);
+    });
+
+    it('expression with meta', function() {
+      assert.deepEqual(parse('^:dynamic (+ 1 2)'), [
+        {
+          type: 'list',
+          value: [
+            { type: 'identifier', value: 'with_meta' },
+            {
+              type: 'list',
+              value: [
+                { type: 'identifier', value: '_PLUS_' },
+                { type: 'integer', raw: '1', value: 1 },
+                { type: 'integer', raw: '2', value: 2 }
+              ]
+            },
+            {
+              type: 'map',
+              value: [
+                { type: 'keyword', raw: '"dynamic"', value: 'dynamic' },
+                { type: 'literal', raw: 'true', value: true }
+              ]
+            }
+          ]
+        }
+      ]);
+    });
+
+    it('vector with meta', function() {
+      assert.deepEqual(parse('^:dynamic [1 2 3]'), [
+        {
+          type: 'list',
+          value: [
+            { type: 'identifier', value: 'with_meta' },
+            {
+              type: 'vector',
+              value: [
+                { type: 'integer', raw: '1', value: 1 },
+                { type: 'integer', raw: '2', value: 2 },
+                { type: 'integer', raw: '3', value: 3 }
+              ]
+            },
+            {
+              type: 'map',
+              value: [
+                { type: 'keyword', raw: '"dynamic"', value: 'dynamic' },
+                { type: 'literal', raw: 'true', value: true }
+              ]
+            }
+          ]
+        }
+      ]);
+    });
+
+    it('identifier with expanded meta', function() {
+      assert.deepEqual(parse('^{:doc "How obj works!"} obj'), [
+        {
+          type: 'list',
+          value: [
+            { type: 'identifier', value: 'with_meta' },
+            { type: 'identifier', value: 'obj' },
+            {
+              type: 'map',
+              value: [
+                { type: 'keyword', raw: '"doc"', value: 'doc' },
+                {
+                  type: 'string',
+                  raw: '"How obj works!"',
+                  value: 'How obj works!'
+                }
+              ]
+            }
+          ]
+        }
+      ]);
+    });
   });
 
   describe('errors', () => {
@@ -482,10 +645,6 @@ world"`
 
     it('in #:', () => {
       assert.throws(() => parse('#:'), 'Invalid character ":" in symbol');
-    });
-
-    it('in #@', () => {
-      assert.throws(() => parse('#@'), 'Invalid character "@" in symbol');
     });
   });
 });
