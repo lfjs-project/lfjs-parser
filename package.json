@@ -1,6 +1,6 @@
 {
   "name": "@lfjs/parser",
-  "version": "0.6.0",
+  "version": "0.1.0",
   "description": "LFJS parser",
   "homepage": "https://lfjs.io",
   "author": "Paul Chavard",
@@ -26,7 +26,7 @@
     "modules"
   ],
   "bugs": {
-    "url": "https://github.com/tchak/lfjs-parser/issues"
+    "url": "https://github.com/lfjs-project/lfjs-parser/issues"
   },
   "files": [
     "lib"
