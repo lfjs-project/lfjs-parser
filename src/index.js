@@ -40,7 +40,7 @@ export default function parse(str) {
         break;
       // Vector
       case 'open-bracket':
-        current = ESNode('vector', []);
+        current = ESNode('array', []);
         push(tree, current);
 
         tree.unshift(current);
@@ -181,7 +181,7 @@ function anonymousFnArguments(node, anonymousParams) {
 
     node.value = [
       identifier('fn'),
-      ESNode('vector', params),
+      ESNode('array', params),
       list(...node.value)
     ];
   }

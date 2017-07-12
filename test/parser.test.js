@@ -239,7 +239,7 @@ world"`
                 type: 'list',
                 value: [
                   { type: 'identifier', value: 'atom' },
-                  { type: 'vector', value: [] }
+                  { type: 'array', value: [] }
                 ]
               }
             ]
@@ -280,11 +280,11 @@ world"`
     });
   });
 
-  describe('vector', function() {
+  describe('array', function() {
     it('with literals', function() {
       assert.deepEqual(parse('[1 "yolo" true]'), [
         {
-          type: 'vector',
+          type: 'array',
           value: [
             { type: 'integer', raw: '1', value: 1 },
             { type: 'string', raw: '"yolo"', value: 'yolo' },
@@ -305,7 +305,7 @@ world"`
             { type: 'string', raw: '"yolo"', value: 'yolo' },
             { type: 'literal', raw: 'true', value: true },
             {
-              type: 'vector',
+              type: 'array',
               value: [
                 {
                   raw: '"yolo"',
@@ -366,7 +366,7 @@ world"`
           value: [
             { type: 'identifier', value: 'fn' },
             {
-              type: 'vector',
+              type: 'array',
               value: [{ type: 'identifier', value: '_PERCENT_1' }]
             },
             {
@@ -389,7 +389,7 @@ world"`
           value: [
             { type: 'identifier', value: 'fn' },
             {
-              type: 'vector',
+              type: 'array',
               value: [
                 { type: 'identifier', value: '_PERCENT_1' },
                 { type: 'identifier', value: '_PERCENT_2' }
@@ -415,7 +415,7 @@ world"`
           value: [
             { type: 'identifier', value: 'fn' },
             {
-              type: 'vector',
+              type: 'array',
               value: [
                 { type: 'identifier', value: '_PERCENT_1' },
                 { type: 'identifier', value: '_PERCENT_2' },
@@ -449,7 +449,7 @@ world"`
           value: [
             { type: 'identifier', value: 'fn' },
             {
-              type: 'vector',
+              type: 'array',
               value: [{ type: 'identifier', value: '_PERCENT_1' }]
             },
             {
@@ -465,7 +465,7 @@ world"`
                       value: [
                         { type: 'identifier', value: 'fn' },
                         {
-                          type: 'vector',
+                          type: 'array',
                           value: [
                             { type: 'identifier', value: '_PERCENT_1' },
                             { type: 'identifier', value: '_PERCENT_2' },
@@ -584,14 +584,14 @@ world"`
       ]);
     });
 
-    it('vector with meta', function() {
+    it('array with meta', function() {
       assert.deepEqual(parse('^:dynamic [1 2 3]'), [
         {
           type: 'list',
           value: [
             { type: 'identifier', value: 'with_meta' },
             {
-              type: 'vector',
+              type: 'array',
               value: [
                 { type: 'integer', raw: '1', value: 1 },
                 { type: 'integer', raw: '2', value: 2 },
