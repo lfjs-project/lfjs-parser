@@ -1,35 +1,32 @@
 {
   "name": "@lfjs/parser",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LFJS parser",
   "homepage": "https://lfjs.io",
   "author": "Paul Chavard",
   "license": "MIT",
-  "main": "dist/index.js",
-  "jsnext:main": "src/index.js",
+  "main": "lib/index.js",
   "scripts": {
     "prettier": "prettier --single-quote --write src/*.js test/*.js",
-    "clean": "rm -rf dist coverage",
+    "clean": "rm -rf lib coverage",
     "lint": "eslint src test",
     "pretest": "yarn run lint",
     "test": "mocha --compilers js:babel-register",
-    "build": "babel src --out-dir dist",
+    "build": "babel src --out-dir lib",
     "prepublish": "yarn run clean && yarn test && yarn run build"
+  },
+  "engines": {
+    "node": ">= 6.0.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lfjs-project/lfjs-parser.git"
   },
-  "keywords": [
-    "lfjs",
-    "es6",
-    "modules"
-  ],
   "bugs": {
     "url": "https://github.com/lfjs-project/lfjs-parser/issues"
   },
-  "files": [
-    "lib"
+  "keywords": [
+    "lfjs"
   ],
   "devDependencies": {
     "babel-cli": "^6.24.1",
